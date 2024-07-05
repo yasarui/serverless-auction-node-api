@@ -11,11 +11,6 @@ stages:
 provider:
   name: aws
   runtime: nodejs20.x
-  httpApi:
-    authorizers:
-      customAuthorizer:
-        type: request
-        functionArn: arn:aws:lambda:us-east-1:428575618622:function:auth-service-dev-auth
   iam:
     role:
       statements:
@@ -37,7 +32,19 @@ functions:
   api:
     handler: handler.handler
     events:
-      - httpApi: '*'
+      - httpApi: 
+          path: /auctions
+          method: GET
+      - httpApi: 
+          path: /auctions/{id}
+          method: GET
+      - httpApi: 
+          path: /auctions
+          method: POST
+      - httpApi: 
+          path: /auctions/{id}/bid
+          method: PATCH
+
   processAuctions:
     handler: src/processauctions/processAuctions.handler
     # events:
