@@ -1,0 +1,71 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: yasardesigns
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: never-say-never
+
+stages:
+  default:
+    params:
+      tableName: "auctions-table-${sls:stage}"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  httpApi:
+    authorizers:
+      customAuthorizer:
+        type: request
+        functionArn: arn:aws:lambda:us-east-1:428575618622:function:auth-service-dev-auth
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [AuctionsTable, Arn]
+            - arn:aws:dynamodb:us-east-1:428575618622:table/auctions-table-dev/index/statusAndEndDate
+  environment:
+    AUCTIONS_TABLE: ${param:tableName}
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - httpApi: '*'
+  processAuctions:
+    handler: src/processauctions/processAuctions.handler
+    # events:
+    #   - schedule: rate(1 minute)
+
+resources:
+  Resources:
+    AuctionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S 
+          - AttributeName: endingAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: statusAndEndDate
+            KeySchema:
+              - AttributeName: status
+                KeyType: HASH
+              - AttributeName: endingAt
+                KeyType: RANGE
+            Projection:
+                ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${param:tableName}
