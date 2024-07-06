@@ -62,7 +62,7 @@ const getAuction = async (auctionId) => {
   return await findAuctionById(auctionId);
 };
 
-const createAuction = async (title) => {
+const createAuction = async (title, email) => {
   const createdAt = new Date().toISOString();
   const endDate = new Date();
   endDate.setHours(new Date().getHours() + 1) 
@@ -74,7 +74,8 @@ const createAuction = async (title) => {
     endingAt: endDate.toISOString(),
     highestBid: {
       amount: 0
-    }
+    },
+    seller: email
   };
   const params = {
     TableName: AUCTIONS_TABLE,
@@ -89,22 +90,38 @@ const createAuction = async (title) => {
   }
 };
 
-const updateAuction = async (id, amount) => {
+const updateAuction = async (id, amount, email) => {
   const auction = await findAuctionById(id);
+
+  // Seller itself cant bid on his auction
+  if(auction.seller === email){
+    throw new createError.Forbidden(`You Cant bid on your own auction`);
+  }
+
+  // Bidder cant bid twice
+  if(auction.highestBid.bidder === email){
+    throw new createError.Forbidden(`You are the highest bidder already`);
+  }
+
+  // Bid Amount Validation
   if (amount <= auction.highestBid.amount) {
     throw new createError.Forbidden(`Your bid must be higher than ${auction.highestBid.amount}!`);
   }
+
+  // Auction Status Validation
   if(auction.status === 'CLOSED') {
     throw new createError.Forbidden(`You cannot bid on the closed auction`);
   }
+
   const params = {
     TableName: AUCTIONS_TABLE,
     Key: {
       id
     },
-    UpdateExpression: "set highestBid.amount = :amount",
+    UpdateExpression: "set highestBid.amount = :amount, highestBid.bidder = :bidder",
     ExpressionAttributeValues: {
       ":amount": amount,
+      ":bidder": email
     },
     ReturnValues: "ALL_NEW"
   }

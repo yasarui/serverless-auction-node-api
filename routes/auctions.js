@@ -30,8 +30,9 @@ router.get('/:id', async (req, res, next)=> {
 
 router.post('/', apiSchemaValidation.validateBody(createAuctionSchema), async (req, res, next)=>{
    const { title } = req.body;
+   const { email } = req.apiGateway.event.requestContext.authorizer.lambda;
    try {
-     const result = await createAuction(title);
+     const result = await createAuction(title, email);
      const response = successResponse('New Auction created', result, 201);
      res.status(200).json(response);
    } catch (error) {
@@ -42,8 +43,9 @@ router.post('/', apiSchemaValidation.validateBody(createAuctionSchema), async (r
 router.patch('/:id/bid',apiSchemaValidation.validateBody(updateAuctionSchema), async (req, res, next)=>{
    const { id } = req.params;
    const { amount } = req.body;
+   const { email } = req.apiGateway.event.requestContext.authorizer.lambda;
    try {
-     const result = await updateAuction(id, amount);
+     const result = await updateAuction(id, amount, email);
      const response = successResponse('Bid placed successfully', result, 200);
      res.status(200).json(response);
    } catch (error) {
