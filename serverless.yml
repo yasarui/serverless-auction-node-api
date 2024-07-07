@@ -11,6 +11,7 @@ stages:
 provider:
   name: aws
   runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
   iam:
     role:
       statements:
@@ -23,10 +24,12 @@ provider:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - sqs:SendMessage
+            - s3:PutObject
           Resource:
             - Fn::GetAtt: [AuctionsTable, Arn]
             - arn:aws:dynamodb:us-east-1:428575618622:table/auctions-table-dev/index/statusAndEndDate
             - ${self:custom.MailQueue.arn}
+            - arn:aws:s3:::${self:custom.AuctionsBucket.name}/*
   httpApi:
     authorizers:
       customAuthorizer:
@@ -35,6 +38,7 @@ provider:
   environment:
     AUCTIONS_TABLE: ${param:tableName}
     MAIL_QUEUE_URL: ${self:custom.MailQueue.url}
+    AUCTIONS_BUCKET_NAME: ${self:custom.AuctionsBucket.name}
 
 functions:
   api:
@@ -60,15 +64,23 @@ functions:
           method: PATCH
           authorizer:
             name: customAuthorizer
+      - httpApi:
+          path: /auctions/{id}/picture
+          method: PATCH
+          authorizer:
+             name: customAuthorizer
 
   processAuctions:
     handler: src/processauctions/processAuctions.handler
     # events:
     #   - schedule: rate(1 minute)
+
 custom:
   MailQueue:
     arn: ${cf:notification-service-dev.MailQueueArn}
     url: ${cf:notification-service-dev.MailQueueUrl}
+  AuctionsBucket:
+    name: auctions-bucket-asmaasara-${self:provider.stage}
   bundle:
     linting: false
 
@@ -98,3 +110,26 @@ resources:
                 ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
         TableName: ${param:tableName}
+
+    AuctionsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.AuctionsBucket.name}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+        OwnershipControls:
+          Rules:
+            - ObjectOwnership: ObjectWriter
+            
+    AuctionsBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref AuctionsBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicRead
+              Effect: Allow
+              Principal: '*'
+              Action:
+                - s3:GetObject
+              Resource: arn:aws:s3:::${self:custom.AuctionsBucket.name}/*

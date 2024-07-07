@@ -8,6 +8,8 @@ const {
   QueryCommand
 } = require("@aws-sdk/lib-dynamodb");
 const createError = require('http-errors');
+const uploadPictureToS3 = require('../lib/uploadPictureToS3');
+const setAuctionPictureUrl = require('../lib/setAuctionPictureUrl');
 const moment = require("moment");
 const { v4: uuid } = require("uuid");
 
@@ -134,9 +136,29 @@ const updateAuction = async (id, amount, email) => {
   }
 };
 
+const updateAuctionPicture = async (id, email, imgBuffer) => {
+  const auction = await findAuctionById(id);
+
+  // Only seller can update the picture
+  if(auction.seller !== email){
+    throw new createError.Forbidden(`You are not the seller of this auction!`);
+  }
+
+  let updatedAuction;
+  try {
+    const pictureUrl = await uploadPictureToS3(auction.id + '.jpg', imgBuffer);
+    updatedAuction = await setAuctionPictureUrl(auction.id, pictureUrl);
+    return updateAuction
+  } catch (error) {
+    console.error(error);
+    throw new createError.InternalServerError(error);
+  }
+}
+
 module.exports = {
   getAllAuctions,
   getAuction,
   createAuction,
   updateAuction,
+  updateAuctionPicture
 };

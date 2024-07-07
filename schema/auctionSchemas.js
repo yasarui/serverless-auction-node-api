@@ -12,8 +12,13 @@ const updateAuctionSchema = Joi.object({
     amount: Joi.number().required()
 })
 
+const updateAuctionPictureSchema = Joi.object({
+    image: Joi.string().required()
+})
+
 module.exports = {
     getAllAuctionsSchema,
     createAuctionSchema,
-    updateAuctionSchema
+    updateAuctionSchema,
+    updateAuctionPictureSchema
 }

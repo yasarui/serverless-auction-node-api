@@ -1,7 +1,7 @@
 const express = require('express');
-const { getAllAuctions, getAuction, createAuction, updateAuction } = require('../controllers/auctionController'); 
+const { getAllAuctions, getAuction, createAuction, updateAuction, updateAuctionPicture } = require('../controllers/auctionController'); 
 const { successResponse } = require('../utils/responseApi');
-const { createAuctionSchema, updateAuctionSchema, getAllAuctionsSchema } = require('../schema/auctionSchemas');
+const { createAuctionSchema, updateAuctionSchema, getAllAuctionsSchema, updateAuctionPictureSchema } = require('../schema/auctionSchemas');
 const apiSchemaValidation = require('../middlewares/apiSchemaValidation');
 
 const router = express.Router();
@@ -50,6 +50,20 @@ router.patch('/:id/bid',apiSchemaValidation.validateBody(updateAuctionSchema), a
      res.status(200).json(response);
    } catch (error) {
     next(error);
+   }
+});
+
+router.patch('/:id/picture',apiSchemaValidation.validateBody(updateAuctionPictureSchema), async (req, res, next)=>{
+   const { id } = req.params;
+   const { email } = req.apiGateway.event.requestContext.authorizer.lambda;
+   const base64 = req.body.image.replace(/^data:image\/\w+;base64,/, '');
+   const buffer = Buffer.from(base64, 'base64');
+   try {
+     const result = await updateAuctionPicture(id, email, buffer);
+     const response = successResponse('Picture updated Successfully', result, 200);
+     res.status(200).json(response);
+   } catch(error) {
+     next(error)
    }
 });
 
