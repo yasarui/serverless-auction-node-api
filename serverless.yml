@@ -22,9 +22,11 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
+            - sqs:SendMessage
           Resource:
             - Fn::GetAtt: [AuctionsTable, Arn]
             - arn:aws:dynamodb:us-east-1:428575618622:table/auctions-table-dev/index/statusAndEndDate
+            - ${self:custom.MailQueue.arn}
   httpApi:
     authorizers:
       customAuthorizer:
@@ -32,6 +34,7 @@ provider:
         functionArn: 'arn:aws:lambda:us-east-1:428575618622:function:auth-service-dev-auth'
   environment:
     AUCTIONS_TABLE: ${param:tableName}
+    MAIL_QUEUE_URL: ${self:custom.MailQueue.url}
 
 functions:
   api:
@@ -62,6 +65,12 @@ functions:
     handler: src/processauctions/processAuctions.handler
     # events:
     #   - schedule: rate(1 minute)
+custom:
+  MailQueue:
+    arn: ${cf:notification-service-dev.MailQueueArn}
+    url: ${cf:notification-service-dev.MailQueueUrl}
+  bundle:
+    linting: false
 
 resources:
   Resources:
